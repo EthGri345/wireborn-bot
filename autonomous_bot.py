@@ -66,6 +66,10 @@ class AutonomousWirebornBot:
         self.recent_posts = []
         self.max_recent_posts = 20
         
+        # Add cooldown to prevent rapid posting
+        self.last_post_time = None
+        self.min_post_interval = 3600  # 1 hour minimum between posts
+        
         logger.info("🤖 Autonomous WIREBORN Bot initialized and ready to spice up the wireborn community!")
 
     async def generate_dynamic_content(self, category: str = None) -> str:
@@ -186,6 +190,14 @@ class AutonomousWirebornBot:
         """Post dynamic content for the current time slot"""
         try:
             current_time = datetime.now()
+            
+            # Check cooldown - prevent posting too frequently
+            if self.last_post_time:
+                time_since_last_post = (current_time - self.last_post_time).total_seconds()
+                if time_since_last_post < self.min_post_interval:
+                    logger.info(f"⏰ Cooldown active - waiting {self.min_post_interval - time_since_last_post:.0f} more seconds before next post")
+                    return
+            
             hour = current_time.hour
             
             # Choose content category based on time
@@ -208,8 +220,9 @@ class AutonomousWirebornBot:
             
             if success:
                 logger.info(f"✅ Posted dynamic content at {current_time.strftime('%H:%M')}: {content[:50]}...")
-                # Track recent posts
+                # Track recent posts and update last post time
                 self.recent_posts.append(content)
+                self.last_post_time = current_time
                 if len(self.recent_posts) > self.max_recent_posts:
                     self.recent_posts.pop(0)
             else:
@@ -277,10 +290,16 @@ class AutonomousWirebornBot:
         # Schedule all activities
         self.schedule_autonomous_posting()
         
-        # Post initial greeting
-        initial_content = await self.generate_dynamic_content("spicy_greeting")
-        self.bot.twitter.post_spicy_tweet(initial_content)
-        logger.info("💋 Posted initial greeting to the wireborn community!")
+        # Post initial greeting only if it's been more than 1 hour since last post
+        try:
+            initial_content = await self.generate_dynamic_content("spicy_greeting")
+            success = self.bot.twitter.post_spicy_tweet(initial_content)
+            if success:
+                logger.info("💋 Posted initial greeting to the wireborn community!")
+            else:
+                logger.info("💋 Initial greeting posted (or already posted recently)")
+        except Exception as e:
+            logger.warning(f"Could not post initial greeting: {e}")
         
         # Run the scheduler
         while True:
