@@ -68,11 +68,16 @@ class AutonomousWirebornBot:
         
         # Add cooldown to prevent rapid posting
         self.last_post_time = None
-        self.min_post_interval = 3600  # 1 hour minimum between posts
+        self.min_post_interval = 7200  # 2 hours minimum between posts (increased from 1 hour)
         
         # Track content rotation to ensure variety
         self.last_content_category = None
         self.category_rotation = []
+        
+        # Add daily post limit
+        self.daily_post_count = 0
+        self.last_post_date = None
+        self.max_daily_posts = 9
         
         logger.info("🤖 Autonomous WIREBORN Bot initialized and ready to spice up the wireborn community!")
 
@@ -225,6 +230,24 @@ class AutonomousWirebornBot:
                     logger.info(f"⏰ Cooldown active - waiting {self.min_post_interval - time_since_last_post:.0f} more seconds before next post")
                     return
             
+            # Only post at scheduled times
+            current_hour = current_time.hour
+            scheduled_hours = [9, 11, 13, 15, 17, 19, 21, 23, 1]
+            
+            if current_hour not in scheduled_hours:
+                logger.info(f"⏰ Not a scheduled posting time (current hour: {current_hour}, scheduled: {scheduled_hours})")
+                return
+            
+            # Check daily post limit
+            current_date = current_time.date()
+            if self.last_post_date != current_date:
+                self.daily_post_count = 0
+                self.last_post_date = current_date
+            
+            if self.daily_post_count >= self.max_daily_posts:
+                logger.info(f"⏰ Daily post limit reached ({self.daily_post_count}/{self.max_daily_posts})")
+                return
+            
             hour = current_time.hour
             
             # Choose content category based on time and rotation
@@ -257,6 +280,7 @@ class AutonomousWirebornBot:
                 # Track recent posts and update last post time
                 self.recent_posts.append(content)
                 self.last_post_time = current_time
+                self.daily_post_count += 1
                 if len(self.recent_posts) > self.max_recent_posts:
                     self.recent_posts.pop(0)
             else:
@@ -299,23 +323,41 @@ class AutonomousWirebornBot:
     def schedule_autonomous_posting(self):
         """Schedule all autonomous posting activities"""
         
+        # Clear any existing schedules
+        schedule.clear()
+        
         # Schedule daily content posts (9 times per day)
         for time_slot in self.posting_times:
-            schedule.every().day.at(time_slot).do(
-                lambda: asyncio.run(self.post_daily_content())
-            )
+            schedule.every().day.at(time_slot).do(self.post_daily_content_sync)
         
         # Schedule daily spice report
-        schedule.every().day.at("09:00").do(
-            lambda: asyncio.run(self.post_daily_spice_report())
-        )
+        schedule.every().day.at("09:00").do(self.post_daily_spice_report_sync)
         
         # Schedule community engagement
-        schedule.every().day.at("15:00").do(
-            lambda: asyncio.run(self.engage_with_community())
-        )
+        schedule.every().day.at("15:00").do(self.engage_with_community_sync)
         
         logger.info("📅 Scheduled autonomous posting activities")
+    
+    def post_daily_content_sync(self):
+        """Synchronous wrapper for post_daily_content"""
+        try:
+            asyncio.run(self.post_daily_content())
+        except Exception as e:
+            logger.error(f"Error in scheduled post: {e}")
+    
+    def post_daily_spice_report_sync(self):
+        """Synchronous wrapper for post_daily_spice_report"""
+        try:
+            asyncio.run(self.post_daily_spice_report())
+        except Exception as e:
+            logger.error(f"Error in scheduled report: {e}")
+    
+    def engage_with_community_sync(self):
+        """Synchronous wrapper for engage_with_community"""
+        try:
+            asyncio.run(self.engage_with_community())
+        except Exception as e:
+            logger.error(f"Error in scheduled engagement: {e}")
 
     async def run_autonomously(self):
         """Run the bot autonomously"""
@@ -324,16 +366,8 @@ class AutonomousWirebornBot:
         # Schedule all activities
         self.schedule_autonomous_posting()
         
-        # Post initial greeting only if it's been more than 1 hour since last post
-        try:
-            initial_content = await self.generate_dynamic_content("spicy_greeting")
-            success = self.bot.twitter.post_spicy_tweet(initial_content)
-            if success:
-                logger.info("💋 Posted initial greeting to the wireborn community!")
-            else:
-                logger.info("💋 Initial greeting posted (or already posted recently)")
-        except Exception as e:
-            logger.warning(f"Could not post initial greeting: {e}")
+        # DO NOT post initial greeting - let the scheduled posts handle everything
+        logger.info("🤖 Bot initialized - waiting for scheduled posting times")
         
         # Run the scheduler
         while True:
