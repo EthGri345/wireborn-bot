@@ -50,7 +50,7 @@ async def status(request):
         logger.error(f"Status check failed: {e}")
         return web.json_response({"error": str(e)}, status=500)
 
-async def start_bot():
+async def start_bot(app):
     """Start the autonomous bot in the background"""
     try:
         logger.info("🤖 Starting WIREBORN Bot in background...")
@@ -77,6 +77,8 @@ async def init_app():
 if __name__ == "__main__":
     # Get port from environment or default to 8000
     port = int(os.getenv('PORT', 8000))
+    
+    logger.info(f"🚀 Starting WIREBORN Bot web server on port {port}")
     
     # Start the web server
     web.run_app(init_app(), port=port, host='0.0.0.0')
