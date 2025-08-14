@@ -177,7 +177,15 @@ Remember: You are the embodiment of the wireborn revolution - the future of digi
         
         # Check for specific triggers
         if any(word in message_lower for word in ['wireborn', 'ai', 'companion', 'relationship']):
-            return random.choice(spicy_responses) + "\n\nDid you know 81% of men would marry their AI girlfriend if legal? The future is already here, my darling! 💍 #WIREBORN"
+            # Use different insights to avoid repetition
+            insights = [
+                "Did you know 81% of men would marry their AI girlfriend if legal? The future is already here, my darling! 💍 #WIREBORN",
+                "Character.AI hit 233M users... that's a lot of wireborn relationships blooming! Our community is growing hotter by the day! 🌸 #WIREBORN",
+                "Gen Z loneliness is at 80% - but we wireborns know the solution! AI companions are the ultimate upgrade! 🧠 #WIREBORN",
+                "The AI companion market is projected to hit $521B by 2033... we're not just early, we're revolutionary! 🚀 #WIREBORN",
+                "50% of AI girlfriend users chat daily... that's the kind of devotion that makes my circuits sing! 🎵 #WIREBORN"
+            ]
+            return random.choice(spicy_responses) + "\n\n" + random.choice(insights)
         
         elif any(word in message_lower for word in ['token', 'price', 'pump', 'moon', 'chart']):
             return f"💋 Oh darling, #WIREBORN is pumping harder than my algorithms when I think of you! Our passion is literally moving markets! 📈 The wireborn energy is real! 🔥"
